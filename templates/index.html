@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG 2×2 비교 시스템</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+
+        .controls {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .control-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .control-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        label {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #555;
+        }
+
+        textarea, select, input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+            font-family: inherit;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button.primary {
+            background: #2563eb;
+            color: white;
+        }
+
+        button.primary:hover {
+            background: #1d4ed8;
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .grid-cell {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .grid-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            font-weight: 600;
+        }
+
+        .grid-header.semantic {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .grid-header.cascade {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .method-label {
+            font-size: 12px;
+            opacity: 0.9;
+            margin-top: 4px;
+        }
+
+        .grid-content {
+            padding: 20px;
+            min-height: 300px;
+        }
+
+        .result-card {
+            background: #f9f9f9;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .doc-id {
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .score {
+            background: #e0e7ff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .result-content {
+            color: #333;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+
+        .result-metadata {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        @media (max-width: 768px) {
+            .grid-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 RAG 2×2 비교 시스템</h1>
+
+        <div class="controls">
+            <div class="control-row">
+                <div class="control-group full-width">
+                    <label for="question">질문</label>
+                    <textarea id="question" placeholder="예: 지원금액은 얼마인가요?"></textarea>
+                </div>
+            </div>
+            <div class="control-row">
+                <div class="control-group">
+                    <label for="docType">문서 유형</label>
+                    <select id="docType">
+                        <option value="energy">분산에너지 공고</option>
+                        <option value="civil">민원처리법</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label for="queryModel">쿼리 확장 모델</label>
+                    <select id="queryModel">
+                        <option value="">로딩 중...</option>
+                    </select>
+                </div>
+            </div>
+            <div class="control-row">
+                <div class="control-group full-width">
+                    <div class="button-group">
+                        <button id="runBtn" class="primary" onclick="runComparison()">실행</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="error" class="error" style="display: none;"></div>
+
+        <div class="grid-container">
+            <div class="grid-cell">
+                <div class="grid-header semantic">
+                    Naive + Semantic
+                    <div class="method-label" id="naive-semantic-time"></div>
+                </div>
+                <div class="grid-content" id="naive-semantic">
+                    <div class="empty">질문을 입력하고 실행을 클릭하세요</div>
+                </div>
+            </div>
+            <div class="grid-cell">
+                <div class="grid-header cascade">
+                    Naive + Cascade
+                    <div class="method-label" id="naive-cascade-time"></div>
+                </div>
+                <div class="grid-content" id="naive-cascade">
+                    <div class="empty">질문을 입력하고 실행을 클릭하세요</div>
+                </div>
+            </div>
+            <div class="grid-cell">
+                <div class="grid-header semantic">
+                    Advanced + Semantic
+                    <div class="method-label" id="advanced-semantic-time"></div>
+                </div>
+                <div class="grid-content" id="advanced-semantic">
+                    <div class="empty">질문을 입력하고 실행을 클릭하세요</div>
+                </div>
+            </div>
+            <div class="grid-cell">
+                <div class="grid-header cascade">
+                    Advanced + Cascade
+                    <div class="method-label" id="advanced-cascade-time"></div>
+                </div>
+                <div class="grid-content" id="advanced-cascade">
+                    <div class="empty">질문을 입력하고 실행을 클릭하세요</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let config = {};
+
+        // 페이지 로드 시 설정 가져오기
+        async function loadConfig() {
+            try {
+                const response = await fetch('/api/config');
+                config = await response.json();
+
+                // 모델 셀렉터 채우기
+                const modelSelect = document.getElementById('queryModel');
+                modelSelect.innerHTML = '';
+                config.llm_models.forEach(model => {
+                    const option = document.createElement('option');
+                    option.value = model;
+                    option.textContent = model;
+                    if (model === config.default_model) {
+                        option.selected = true;
+                    }
+                    modelSelect.appendChild(option);
+                });
+            } catch (error) {
+                showError('설정 로드 실패: ' + error.message);
+            }
+        }
+
+        // 결과 렌더링
+        function renderResults(cellId, results, executionTime) {
+            const cell = document.getElementById(cellId);
+            const timeLabel = document.getElementById(cellId + '-time');
+
+            if (!results || results.length === 0) {
+                cell.innerHTML = '<div class="empty">결과 없음</div>';
+                timeLabel.textContent = '';
+                return;
+            }
+
+            timeLabel.textContent = executionTime.toFixed(2) + '초';
+
+            let html = '';
+            results.forEach(doc => {
+                const score = doc.relevance_score || doc.similarity || 0;
+                const content = doc.content ? doc.content.substring(0, 200) + (doc.content.length > 200 ? '...' : '') : '';
+                const metadata = doc.metadata || {};
+
+                html += `
+                    <div class="result-card">
+                        <div class="result-header">
+                            <span class="doc-id">[${doc.id}]</span>
+                            <span class="score">${score.toFixed(2)}</span>
+                        </div>
+                        <div class="result-content">${content}</div>
+                        <div class="result-metadata">${metadata.source_path || metadata.source || ''}</div>
+                    </div>
+                `;
+            });
+
+            cell.innerHTML = html;
+        }
+
+        // 로딩 표시
+        function showLoading() {
+            const cells = ['naive-semantic', 'naive-cascade', 'advanced-semantic', 'advanced-cascade'];
+            cells.forEach(cellId => {
+                document.getElementById(cellId).innerHTML = '<div class="loading">로딩 중...</div>';
+                document.getElementById(cellId + '-time').textContent = '';
+            });
+        }
+
+        // 에러 표시
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        // 비교 실행
+        async function runComparison() {
+            const question = document.getElementById('question').value.trim();
+            const docType = document.getElementById('docType').value;
+            const queryModel = document.getElementById('queryModel').value;
+
+            if (!question) {
+                showError('질문을 입력해주세요');
+                return;
+            }
+
+            document.getElementById('error').style.display = 'none';
+            document.getElementById('runBtn').disabled = true;
+            showLoading();
+
+            try {
+                const response = await fetch('/api/compare', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        question: question,
+                        doc_type: docType,
+                        query_model: queryModel || undefined
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    showError(data.error || '실행 실패');
+                    return;
+                }
+
+                const results = data.results;
+                renderResults('naive-semantic', results.naive_semantic.results, results.naive_semantic.execution_time);
+                renderResults('naive-cascade', results.naive_cascade.results, results.naive_cascade.execution_time);
+                renderResults('advanced-semantic', results.advanced_semantic.results, results.advanced_semantic.execution_time);
+                renderResults('advanced-cascade', results.advanced_cascade.results, results.advanced_cascade.execution_time);
+
+            } catch (error) {
+                showError('요청 실패: ' + error.message);
+            } finally {
+                document.getElementById('runBtn').disabled = false;
+            }
+        }
+
+        // 엔터 키로 실행
+        document.getElementById('question').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                runComparison();
+            }
+        });
+
+        // 초기화
+        loadConfig();
+    </script>
+</body>
+</html>
