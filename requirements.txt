@@ -1,0 +1,33 @@
+# RAG 2×2 비교 시스템 의존성 패키지
+
+# 웹 프레임워크
+Flask==3.1.3
+Werkzeug==3.1.8
+
+# 환경 변수 관리
+python-dotenv==1.2.2
+
+# OpenAI / 임베딩
+openai==2.44.0
+
+# Supabase 클라이언트
+supabase==2.31.0
+
+# Cohere Rerank
+cohere==7.0.5
+
+# 시맨틱 청킹 (Chonkie)
+chonkie==1.3.1
+# Chonkie 의존성 (자동 설치됨)
+# - transformers
+# - tokenizers
+# - sentence-transformers
+
+# (선택사항) 다른 문서 처리 라이브러리
+# python-docx  # .docx 파일 처리
+# pypdf        # .pdf 파일 처리
+# --extra-index-url https://pypi.org/simple/   # 최신 버전 필요시
+
+# (선택사항) 개발 도구
+# pytest         # 테스트
+# black          # 코드 포맷팅
